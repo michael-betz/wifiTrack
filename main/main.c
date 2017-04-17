@@ -64,6 +64,7 @@
 #include "esp_event.h"
 #include "esp_event_loop.h"
 #include "rom/queue.h"
+#include "dnsSneaker.h"
 
 #include "main.h"
 
@@ -73,8 +74,8 @@ EventGroupHandle_t g_wifi_event_group;
 #define CONNECTED_BIT 		 (1<<0)
 #define DNS_DONE_BIT 		 (1<<1)
 
-#define MAX_CACHE_RESULTS    75			// Store N wifis in RTC mem
-#define MAX_WIFIS_PER_RESULT 6			// Only the N strongest ones are stored
+#define MAX_CACHE_RESULTS    75			// Store N scan results in RTC mem
+#define MAX_WIFIS_PER_RESULT 6			// Only the N strongest wifis are stored per scan result
 #define MAX_WIFIS_PER_SCAN   32			// Scan up to N wifis
 
 struct wifiId_t{
@@ -186,12 +187,6 @@ static void initStuff(){
 	}
 }
 
-ip_addr_t g_dnsResponse;
-void dnsCallback(const char *name, const ip_addr_t *ipaddr, void *callback_arg){
-	memcpy( &g_dnsResponse, ipaddr, sizeof(ip_addr_t) );
-	xEventGroupSetBits( g_wifi_event_group, DNS_DONE_BIT );
-}
-
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch(event->event_id) {
@@ -205,6 +200,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 }
 
 static void doWifiScan( void *pvParameters ){
+	uint8_t dnsBuffer[256];
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -251,16 +247,10 @@ static void doWifiScan( void *pvParameters ){
         // Wait for active IP connection
 		if( xEventGroupWaitBits(g_wifi_event_group, CONNECTED_BIT, true, true, 10000/portTICK_PERIOD_MS) & CONNECTED_BIT ){
 			ESP_LOGI( TAG, "Connected !!!");
-			dns_init();
-			char url[255];
-			sprintf( url, "hello%d.world.%s.dnsr.uk.to", wifiCandidate->rssi, wifiCandidate->ssid );
-			ip_addr_t responseIp;
-			dns_gethostbyname( url, &responseIp, dnsCallback, NULL);
-			if( xEventGroupWaitBits(g_wifi_event_group, DNS_DONE_BIT, true, true, 10000/portTICK_PERIOD_MS) & DNS_DONE_BIT ){
-				ESP_LOGI( TAG, "DNS done !!!. Response = %s", ip4addr_ntoa(&g_dnsResponse.u_addr.ip4) );
-			} else {
-				ESP_LOGI( TAG, "DNS timeout");
-			}
+			uint8_t testStr[] = "Wow, this is a very long request String!. Let's see if it passes!!!";
+//			dnsEncode( wifiCandidate->ssid, strlen((char*)wifiCandidate->ssid), dnsBuffer );
+			dnsEncode( testStr, sizeof(testStr), dnsBuffer );
+			dnsSend( dnsBuffer );
 		} else {
 			ESP_LOGI( TAG, "Connection timeout");
 		}
@@ -278,6 +268,6 @@ void app_main(void)
 	ESP_LOGI( TAG, "WifiScanner started" );
 	ESP_ERROR_CHECK( nvs_flash_init() );
 	initStuff();
-	xTaskCreate(&doWifiScan,   "doWifiScan",   4096, NULL, 5, NULL);
+	xTaskCreate(&doWifiScan,   "doWifiScan",   4096*2, NULL, 5, NULL);
 }
 
