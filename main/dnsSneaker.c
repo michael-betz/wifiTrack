@@ -40,7 +40,7 @@ uint8_t *base32Encode( uint8_t *plainBuffer, uint32_t len, uint8_t *symbolOutBuf
 	// tempWord holds 64 plain bits --> encodes to 12 whole symbols, remainder 4 bits
 	while( 1 ){
 		if( remainderCnt >= 5 ){		// Try to consume 5 bits from the remainder
-			ESP_LOGI(TAG,"encode_char( %02x)",remainder);
+//			ESP_LOGI(TAG,"encode_char( %02x)",remainder);
 			*symbolOutBuffer++ = encode_char( remainder );
 			symbolCount++;
 			remainderCnt -= 5;
@@ -48,7 +48,7 @@ uint8_t *base32Encode( uint8_t *plainBuffer, uint32_t len, uint8_t *symbolOutBuf
 		} else {						// Otherwise extend the remainder with 8 fresh bits
 			if( len > 0 ){
 				tmp = *plainBuffer++;
-				ESP_LOGI(TAG,"Fetched: %02x",tmp);
+//				ESP_LOGI(TAG,"Fetched: %02x",tmp);
 				remainder |= tmp << remainderCnt;
 				remainderCnt += 8;
 				len--;
@@ -77,6 +77,14 @@ void hexDump( uint8_t *buffer, uint16_t nBytes ){
 
 // AES encrypt a 16 byte block in place (not implemented yet)
 void encryptBlock( uint8_t *byteBlock ){
+	static esp_aes_context eac = {};
+	static uint8_t isInit = 0;
+	static const uint8_t encryptKey[] = SECRET_KEY_256;
+	if( !isInit ){
+		esp_aes_init( &eac );
+		ESP_ERROR_CHECK( esp_aes_setkey_enc( &eac, encryptKey, 256 ) );
+		esp_aes_crypt_ecb( &eac, ESP_AES_ENCRYPT, byteBlock, byteBlock );
+	}
 	ESP_LOGI(TAG,"Encrypting: ");
 	hexDump( byteBlock, 16 );
 }

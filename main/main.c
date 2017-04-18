@@ -247,7 +247,7 @@ static void doWifiScan( void *pvParameters ){
         // Wait for active IP connection
 		if( xEventGroupWaitBits(g_wifi_event_group, CONNECTED_BIT, true, true, 10000/portTICK_PERIOD_MS) & CONNECTED_BIT ){
 			ESP_LOGI( TAG, "Connected !!!");
-			uint8_t testStr[] = "Wow, this is a very long request String!. Let's see if it passes!!!";
+			uint8_t testStr[] = "Wuhuu!, Communication seems fine!! :D :D So cool! \n\t...\n";
 //			dnsEncode( wifiCandidate->ssid, strlen((char*)wifiCandidate->ssid), dnsBuffer );
 			dnsEncode( testStr, sizeof(testStr), dnsBuffer );
 			dnsSend( dnsBuffer );
