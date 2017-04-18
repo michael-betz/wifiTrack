@@ -75,7 +75,7 @@ void hexDump( uint8_t *buffer, uint16_t nBytes ){
     printf("\n");
 }
 
-// AES encrypt a 16 byte block in place (not implemented yet)
+// AES encrypt a 16 byte block in place
 void encryptBlock( uint8_t *byteBlock ){
 	static esp_aes_context eac = {};
 	static uint8_t isInit = 0;
@@ -83,10 +83,9 @@ void encryptBlock( uint8_t *byteBlock ){
 	if( !isInit ){
 		esp_aes_init( &eac );
 		ESP_ERROR_CHECK( esp_aes_setkey_enc( &eac, encryptKey, 256 ) );
-		esp_aes_crypt_ecb( &eac, ESP_AES_ENCRYPT, byteBlock, byteBlock );
+		isInit = 1;
 	}
-	ESP_LOGI(TAG,"Encrypting: ");
-	hexDump( byteBlock, 16 );
+	esp_aes_crypt_ecb( &eac, ESP_AES_ENCRYPT, byteBlock, byteBlock );
 }
 
 // encodes dataBuffer into a DNS query string
