@@ -128,6 +128,25 @@ static uint16_t countRtcMem(){
 	return nItems;
 }
 
+static void sendWifiCache(){
+	uint8_t dnsBuffer[256], retVal;
+	struct scanResult_t *temp = g_scanResults;
+	for( uint16_t i=0; i<MAX_CACHE_RESULTS; i++ ){
+		if( temp->timestamp == 0xFFFFFFFF ){
+			temp++;
+			continue;
+		}
+			ESP_LOGI(TAG, " sizeof(scanResult_t) = %d bytes", sizeof(struct scanResult_t) );
+			dnsEncode( temp, sizeof(struct scanResult_t), dnsBuffer );
+			retVal = dnsSend( dnsBuffer );
+			ESP_LOGI(TAG, " retVal = %d", retVal );
+			if( retVal == sizeof(struct scanResult_t) ){
+				temp->timestamp = 0xFFFFFFFF;
+			}
+		temp++;
+	}
+}
+
 static void addWifis( wifi_ap_record_t *wifis, uint8_t nFound ){
 	struct scanResult_t *srTemp;
 	struct wifiId_t *wifiTemp;
@@ -247,10 +266,11 @@ static void doWifiScan( void *pvParameters ){
         // Wait for active IP connection
 		if( xEventGroupWaitBits(g_wifi_event_group, CONNECTED_BIT, true, true, 10000/portTICK_PERIOD_MS) & CONNECTED_BIT ){
 			ESP_LOGI( TAG, "Connected !!!");
-			uint8_t testStr[] = "Wuhuu!, Communication seems fine!! :D :D So cool! \n\t...\n";
+			sendWifiCache();
+			// uint8_t testStr[] = "And even variable payloads are in!";
+			// dnsEncode( testStr, sizeof(testStr), dnsBuffer );
 //			dnsEncode( wifiCandidate->ssid, strlen((char*)wifiCandidate->ssid), dnsBuffer );
-			dnsEncode( testStr, sizeof(testStr), dnsBuffer );
-			dnsSend( dnsBuffer );
+			
 		} else {
 			ESP_LOGI( TAG, "Connection timeout");
 		}
