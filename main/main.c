@@ -266,9 +266,10 @@ static void doWifiScan( void *pvParameters ){
         // Wait for active IP connection
 		if( xEventGroupWaitBits(g_wifi_event_group, CONNECTED_BIT, true, true, 10000/portTICK_PERIOD_MS) & CONNECTED_BIT ){
 			ESP_LOGI( TAG, "Connected !!!");
-			sendWifiCache();
-			// uint8_t testStr[] = "And even variable payloads are in!";
-			// dnsEncode( testStr, sizeof(testStr), dnsBuffer );
+			// sendWifiCache();
+			uint8_t testStr[] = "Test message with variable payloads and CRC !!!";
+			dnsEncode( testStr, sizeof(testStr), dnsBuffer );
+			dnsSend( dnsBuffer );
 //			dnsEncode( wifiCandidate->ssid, strlen((char*)wifiCandidate->ssid), dnsBuffer );
 			
 		} else {
