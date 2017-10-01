@@ -93,7 +93,7 @@ void encryptBlock( uint8_t *byteBlock ){
 	static const uint8_t encryptKey[] = SECRET_KEY_256;
 	if( !isInit ){
 		esp_aes_init( &eac );
-		ESP_ERROR_CHECK( esp_aes_setkey_enc( &eac, encryptKey, 256 ) );
+		ESP_ERROR_CHECK( esp_aes_setkey( &eac, encryptKey, 256 ) );
 		isInit = 1;
 	}
 	esp_aes_crypt_ecb( &eac, ESP_AES_ENCRYPT, byteBlock, byteBlock );

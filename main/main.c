@@ -137,7 +137,7 @@ static void sendWifiCache(){
 			continue;
 		}
 			ESP_LOGI(TAG, " sizeof(scanResult_t) = %d bytes", sizeof(struct scanResult_t) );
-			dnsEncode( temp, sizeof(struct scanResult_t), dnsBuffer );
+			dnsEncode( (uint8_t*)temp, sizeof(struct scanResult_t), dnsBuffer );
 			retVal = dnsSend( dnsBuffer );
 			ESP_LOGI(TAG, " retVal = %d", retVal );
 			if( retVal == sizeof(struct scanResult_t) ){
@@ -199,7 +199,7 @@ static void initStuff(){
 	ESP_ERROR_CHECK( gpio_set_direction( BUCK_GPIO, GPIO_MODE_OUTPUT ) );
 	gpio_set_level( BUCK_GPIO, 0 );
 	// Init RTC Memory (only on initial power up)
-	if ( esp_deep_sleep_get_wakeup_cause() == ESP_DEEP_SLEEP_WAKEUP_UNDEFINED ){
+	if ( esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED ){
 		memset( g_scanResults, 0xFF, sizeof(g_scanResults) );
 		g_scanResultWritePointer = 0;
 	    gettimeofday(&g_startTime, NULL);
@@ -280,7 +280,7 @@ static void doWifiScan( void *pvParameters ){
 
     // We are done, sleep and reset
     ESP_LOGI( TAG, "ZzzZZZzZZzzZZ");
-    esp_deep_sleep_enable_timer_wakeup( 10000*1000 );
+    esp_sleep_enable_timer_wakeup( 10000*1000 );
 	esp_deep_sleep_start();
 }
 

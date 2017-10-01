@@ -63,10 +63,10 @@ class DnsDecoder:
     def dnsDecode( self, qnString ):
         """ decode URL string and return payload as bytes """
         if not qnString.endswith( self.SUBDOMAIN ):
-            raise RuntimeError("Bad hostname" + qnString.split(".")[-1])
-        messageBlocks = qnString.replace( self.SUBDOMAIN, "" )
+            raise RuntimeError("Bad hostname" + qnString)
+        messageBlocks = qnString.replace( self.SUBDOMAIN, "" ).split(".")
         resultBytes = bytearray()
-        for messageBlock in messageBlocks.split("."):
+        for messageBlock in messageBlocks:
             messageBlock.upper()
             resultBytes += self.cipher.decrypt( self._decodeBlock(messageBlock) )
         plCrc = resultBytes[-2]<<8 | resultBytes[-1]
