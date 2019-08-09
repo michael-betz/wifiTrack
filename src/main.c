@@ -8,46 +8,6 @@
  *  * bluetooth: macAddress (6 bytes), name of beacon, RSSI [dBm]
  *
  */
-//----------------------------------
-// MLS request
-//----------------------------------
-//{
-//    "considerIp": false,
-//    "bluetoothBeacons": [
-//        {
-//            "macAddress": "ff:23:45:67:89:ab",
-//            "age": 2000,
-//            "name": "beacon",
-//            "signalStrength": -110
-//        }
-//    ],
-//    "cellTowers": [{
-//        "radioType": "wcdma",
-//        "mobileCountryCode": 208,
-//        "mobileNetworkCode": 1,
-//        "locationAreaCode": 2,
-//        "cellId": 1234567,
-//        "age": 1,
-//        "psc": 3,
-//        "signalStrength": -60,
-//        "timingAdvance": 1
-//    }],
-//    "wifiAccessPoints": [{
-//        "macAddress": "01:23:45:67:89:ab",
-//        "age": 3,
-//        "channel": 11,
-//        "frequency": 2412,
-//        "signalStrength": -51,
-//        "signalToNoiseRatio": 13
-//    }, {
-//        "macAddress": "01:23:45:67:89:cd"
-//    }],
-//    "fallbacks": {
-//        "lacf": true,
-//        "ipf": true
-//    }
-//}
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
@@ -66,15 +26,14 @@
 #include "rom/queue.h"
 #include "dnsSneaker.h"
 
-#include "main.h"
-
 static const char* TAG = "main.c";
 
 EventGroupHandle_t g_wifi_event_group;
+#define LED_GPIO 12
 #define CONNECTED_BIT 		 (1<<0)
 #define DNS_DONE_BIT 		 (1<<1)
 
-#define MAX_CACHE_RESULTS    75			// Store N scan results in RTC mem
+#define MAX_CACHE_RESULTS    60			// Store N scan results in RTC mem
 #define MAX_WIFIS_PER_RESULT 6			// Only the N strongest wifis are stored per scan result
 #define MAX_WIFIS_PER_SCAN   32			// Scan up to N wifis
 
@@ -194,10 +153,6 @@ static void initStuff(){
 	gpio_pad_select_gpio( LED_GPIO );
 	ESP_ERROR_CHECK( gpio_set_direction( LED_GPIO, GPIO_MODE_OUTPUT ) );
 	gpio_set_level( LED_GPIO, 0 );
-	// Init BUCK port
-	gpio_pad_select_gpio( BUCK_GPIO );
-	ESP_ERROR_CHECK( gpio_set_direction( BUCK_GPIO, GPIO_MODE_OUTPUT ) );
-	gpio_set_level( BUCK_GPIO, 0 );
 	// Init RTC Memory (only on initial power up)
 	if ( esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED ){
 		memset( g_scanResults, 0xFF, sizeof(g_scanResults) );
@@ -224,10 +179,9 @@ static void doWifiScan( void *pvParameters ){
     ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));		//Startup WIFI as a client
-    ESP_ERROR_CHECK( esp_wifi_set_ps(WIFI_PS_MODEM) );
-    ESP_ERROR_CHECK( esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MODEM));
+    ESP_ERROR_CHECK(esp_wifi_start());
     wifi_scan_config_t scanConfig = {						//Define a scan filter
 		.ssid = 0,
 		.bssid = 0,
@@ -261,17 +215,19 @@ static void doWifiScan( void *pvParameters ){
         memcpy( cfg.sta.bssid, wifiCandidate->bssid, 6 );
         cfg.sta.bssid_set = true;
     	ESP_LOGI( TAG, "Phoning home on %s ...", cfg.sta.ssid );
-        ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &cfg) );
-        ESP_ERROR_CHECK( esp_wifi_connect() );
+    	esp_log_level_set("*", ESP_LOG_VERBOSE);
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &cfg));
+        ESP_ERROR_CHECK(esp_wifi_start());
+        ESP_ERROR_CHECK(esp_wifi_connect());
         // Wait for active IP connection
-		if( xEventGroupWaitBits(g_wifi_event_group, CONNECTED_BIT, true, true, 10000/portTICK_PERIOD_MS) & CONNECTED_BIT ){
+		if( xEventGroupWaitBits(g_wifi_event_group, CONNECTED_BIT, true, true, 30000/portTICK_PERIOD_MS) & CONNECTED_BIT ){
 			ESP_LOGI( TAG, "Connected !!!");
 			// sendWifiCache();
-			uint8_t testStr[] = "Test message with variable payloads and CRC !!!";
+			uint8_t testStr[] = "Hi, this is a test of sneaky TX!";
 			dnsEncode( testStr, sizeof(testStr), dnsBuffer );
 			dnsSend( dnsBuffer );
 //			dnsEncode( wifiCandidate->ssid, strlen((char*)wifiCandidate->ssid), dnsBuffer );
-			
+
 		} else {
 			ESP_LOGI( TAG, "Connection timeout");
 		}
